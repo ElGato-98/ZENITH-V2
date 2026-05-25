@@ -417,7 +417,7 @@ body.camera-active .camera-feed {
   bottom: max(14px, env(safe-area-inset-bottom));
   left: max(14px, env(safe-area-inset-left));
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   max-width: 760px;
   padding: 5px;
@@ -466,7 +466,8 @@ body.camera-active .camera-feed {
 }
 
 body.sensor-active #sensorBtn,
-body.camera-active #cameraBtn {
+body.camera-active #cameraBtn,
+body.aligned #alignBtn {
   color: var(--green);
 }
 
@@ -594,6 +595,6 @@ body.camera-active #cameraBtn {
   }
 
   .control-dock {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

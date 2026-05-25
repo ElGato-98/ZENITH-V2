@@ -237,7 +237,9 @@ const state = {
   rawSensorAz: 180,
   rawSensorAlt: 45,
   sensorOffset: 0,
+  sensorAltOffset: 0,
   hasSensorReading: false,
+  aligned: false,
   fov: 82,
   live: true,
   time: new Date(),
@@ -269,6 +271,7 @@ const els = {
   results: document.getElementById("searchResults"),
   objectCard: document.getElementById("objectCard"),
   liveTimeBtn: document.getElementById("liveTimeBtn"),
+  alignBtn: document.getElementById("alignBtn"),
   labelsBtn: document.getElementById("labelsBtn"),
   messierBtn: document.getElementById("messierBtn")
 };
@@ -869,6 +872,7 @@ function updateTelemetry() {
   document.body.classList.toggle("sensor-active", state.sensorsActive);
   document.body.classList.toggle("astronomy-engine", Boolean(astronomyEngine()?.Equator));
   document.body.classList.toggle("astronomy-active", state.usingAstronomyEngine);
+  document.body.classList.toggle("aligned", state.aligned);
 }
 
 function updateObjectCard(body) {
@@ -1065,7 +1069,32 @@ function deviceOrientationToHorizon(event) {
 }
 
 function calibrateSensors() {
+  if (!state.hasSensorReading) {
+    state.status = "Vise puis bouge le téléphone";
+    return;
+  }
+
+  const selected = state.lastBodies.find((body) => body.key === state.selectedId || body.id === state.selectedId);
+  const moon = state.lastBodies.find((body) => body.key === "moon" || body.id === "moon");
+  const target = selected?.key === "sun" && moon?.alt > -5 ? moon : selected;
+
+  if (target && Number.isFinite(target.az) && Number.isFinite(target.alt)) {
+    state.selectedId = target.key || target.id;
+    state.followId = null;
+    state.sensorOffset = signedDeg(target.az - state.rawSensorAz);
+    state.sensorAltOffset = clamp(target.alt - state.rawSensorAlt, -28, 28);
+    state.sensorAz = target.az;
+    state.sensorAlt = target.alt;
+    state.centerAz = target.az;
+    state.centerAlt = clamp(target.alt, -35, 88);
+    state.aligned = true;
+    state.status = `Aligné sur ${target.name}`;
+    return;
+  }
+
   state.sensorOffset = signedDeg(state.centerAz - state.rawSensorAz);
+  state.sensorAltOffset = clamp(state.centerAlt - state.rawSensorAlt, -28, 28);
+  state.aligned = true;
   state.status = "Capteurs recalés";
 }
 
@@ -1077,8 +1106,9 @@ function onDeviceOrientation(event) {
   state.hasSensorReading = true;
 
   const heading = normDeg(reading.az + state.sensorOffset);
+  const altitude = clamp(reading.alt + state.sensorAltOffset, -88, 88);
   state.sensorAz = lerpAngle(state.sensorAz, heading, 0.18);
-  state.sensorAlt += (reading.alt - state.sensorAlt) * 0.18;
+  state.sensorAlt += (altitude - state.sensorAlt) * 0.18;
 }
 
 async function startCamera() {
@@ -1136,6 +1166,14 @@ function wireEvents() {
   });
   document.getElementById("locationBtn").addEventListener("click", requestLocation);
   document.getElementById("sensorBtn").addEventListener("click", enableSensors);
+  els.alignBtn.addEventListener("click", () => {
+    if (!state.sensorsActive) {
+      enableSensors();
+      state.status = "Active les capteurs puis aligne";
+      return;
+    }
+    calibrateSensors();
+  });
   document.getElementById("cameraBtn").addEventListener("click", toggleCamera);
   document.getElementById("backHourBtn").addEventListener("click", () => nudgeTime(-1));
   document.getElementById("nextHourBtn").addEventListener("click", () => nudgeTime(1));

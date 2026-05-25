@@ -16,3 +16,5 @@ L'app est statique : aucun build n'est nécessaire.
 ## Tester sur téléphone
 
 Ouvrir l'URL GitHub Pages depuis le navigateur mobile. Le HTTPS permet aux permissions caméra, géolocalisation et orientation d'être demandées correctement par le navigateur.
+
+En AR, si le ciel est décalé : chercher ou sélectionner l'astre visible, le centrer dans le réticule, puis toucher `Aligner`.
