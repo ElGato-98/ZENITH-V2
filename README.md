@@ -1,6 +1,6 @@
 # Zénith
 
-Zénith est une PWA de carte céleste en JavaScript : projection gnomonique, catalogue embarqué, géolocalisation, gyroscope/boussole et mode AR caméra.
+Zénith est une PWA de carte céleste en JavaScript : projection gnomonique, catalogue embarqué, Astronomy Engine, géolocalisation, gyroscope/boussole et mode AR caméra.
 
 ## Déployer sur GitHub Pages
 

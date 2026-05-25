@@ -1,11 +1,12 @@
-const CACHE_NAME = "zenith-pwa-v2";
+const CACHE_NAME = "zenith-pwa-v3";
 const PRECACHE = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon.svg",
+  "./vendor/astronomy.browser.min.js"
 ];
 
 self.addEventListener("install", (event) => {

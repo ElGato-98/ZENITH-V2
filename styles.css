@@ -487,11 +487,40 @@ body.camera-active #cameraBtn {
   .catalog-panel {
     top: auto;
     right: max(14px, env(safe-area-inset-right));
-    bottom: calc(151px + env(safe-area-inset-bottom));
+    bottom: calc(145px + env(safe-area-inset-bottom));
     left: max(14px, env(safe-area-inset-left));
     width: auto;
-    max-height: 28svh;
+    max-height: 64px;
+    grid-template-rows: auto;
+    padding: 7px;
+    transition: max-height 160ms ease, bottom 160ms ease;
+  }
+
+  .catalog-panel .search-results {
+    display: none;
+  }
+
+  .catalog-panel.is-searching,
+  .catalog-panel.has-query,
+  .catalog-panel:focus-within {
+    max-height: min(34svh, 310px);
     grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .catalog-panel.is-searching .search-results,
+  .catalog-panel.has-query .search-results,
+  .catalog-panel:focus-within .search-results {
+    display: grid;
+  }
+
+  .search-box {
+    min-height: 48px;
+    padding: 7px 10px;
+  }
+
+  .result-button {
+    min-height: 38px;
+    padding: 7px 9px;
   }
 
   .object-card {
@@ -543,6 +572,12 @@ body.camera-active #cameraBtn {
   }
 
   .catalog-panel {
+    bottom: calc(145px + env(safe-area-inset-bottom));
+  }
+
+  .catalog-panel.is-searching,
+  .catalog-panel.has-query,
+  .catalog-panel:focus-within {
     bottom: calc(145px + env(safe-area-inset-bottom));
   }
 

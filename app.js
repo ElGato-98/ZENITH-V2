@@ -9,6 +9,31 @@ const normDeg = (value) => ((value % 360) + 360) % 360;
 const normHours = (value) => ((value % 24) + 24) % 24;
 const signedDeg = (value) => ((value + 540) % 360) - 180;
 const lerpAngle = (a, b, t) => normDeg(a + signedDeg(b - a) * t);
+const astronomyEngine = () => globalThis.Astronomy;
+
+function astronomyObserver() {
+  const Astronomy = astronomyEngine();
+  if (!Astronomy?.Observer) return null;
+  return new Astronomy.Observer(state.lat, state.lon, state.elevation || 0);
+}
+
+function astronomyBody(key) {
+  const Astronomy = astronomyEngine();
+  const names = {
+    sun: "Sun",
+    moon: "Moon",
+    mercury: "Mercury",
+    venus: "Venus",
+    mars: "Mars",
+    jupiter: "Jupiter",
+    saturn: "Saturn",
+    uranus: "Uranus",
+    neptune: "Neptune",
+    pluto: "Pluto"
+  };
+  const name = names[key];
+  return Astronomy?.Body?.[name] || name;
+}
 
 const STARS = [
   { id: "sirius", name: "Sirius", ra: hms(6, 45, 9), dec: dms(-16, 42, 58), mag: -1.46, color: "#bde8ff", constellation: "Canis Major" },
@@ -182,12 +207,26 @@ const PLANET_ELEMENTS = {
   earth: { name: "Terre", N: [0, 0], i: [0, 0], w: [282.9404, 4.70935e-5], a: [1, 0], e: [0.016709, -1.151e-9], M: [356.047, 0.9856002585] }
 };
 
+const SOLAR_SYSTEM_BODIES = [
+  { id: "sun", name: "Soleil", type: "Étoile", color: "#fff0a0", glow: "#ffcc3d", mag: -26.7 },
+  { id: "moon", name: "Lune", type: "Satellite", color: "#f5f0dc", glow: "#dcecff", mag: -12.6 },
+  { id: "mercury", name: "Mercure", type: "Planète", color: "#d8d4c8", glow: "#d8d4c8", mag: -0.2 },
+  { id: "venus", name: "Vénus", type: "Planète", color: "#ffe6ac", glow: "#ffe6ac", mag: -4.1 },
+  { id: "mars", name: "Mars", type: "Planète", color: "#ff7a45", glow: "#ff7a45", mag: -1.0 },
+  { id: "jupiter", name: "Jupiter", type: "Planète", color: "#ffe1b2", glow: "#ffe1b2", mag: -2.2 },
+  { id: "saturn", name: "Saturne", type: "Planète", color: "#f5d37a", glow: "#f5d37a", mag: 0.6 },
+  { id: "uranus", name: "Uranus", type: "Planète", color: "#91f4ff", glow: "#91f4ff", mag: 5.7 },
+  { id: "neptune", name: "Neptune", type: "Planète", color: "#7194ff", glow: "#7194ff", mag: 7.8 },
+  { id: "pluto", name: "Pluton", type: "Planète naine", color: "#cdb9a1", glow: "#cdb9a1", mag: 14.2 }
+];
+
 const starById = new Map(STARS.map((star) => [star.id, star]));
 
 const state = {
   mode: "map",
   lat: 50.8503,
   lon: 4.3517,
+  elevation: 0,
   placeLabel: "Bruxelles",
   centerAz: 180,
   centerAlt: 45,
@@ -195,6 +234,10 @@ const state = {
   targetAlt: 45,
   sensorAz: 180,
   sensorAlt: 45,
+  rawSensorAz: 180,
+  rawSensorAlt: 45,
+  sensorOffset: 0,
+  hasSensorReading: false,
   fov: 82,
   live: true,
   time: new Date(),
@@ -207,6 +250,7 @@ const state = {
   cameraStream: null,
   lastBodies: [],
   lastFrame: 0,
+  usingAstronomyEngine: false,
   dpr: 1,
   dragging: false,
   dragStart: null,
@@ -220,6 +264,7 @@ const els = {
   azValue: document.getElementById("azValue"),
   altValue: document.getElementById("altValue"),
   fovValue: document.getElementById("fovValue"),
+  catalogPanel: document.querySelector(".catalog-panel"),
   search: document.getElementById("searchInput"),
   results: document.getElementById("searchResults"),
   objectCard: document.getElementById("objectCard"),
@@ -245,6 +290,20 @@ function gmstHours(jd) {
 }
 
 function horizontalFromEquatorial(raHours, decDeg, date = state.time) {
+  const Astronomy = astronomyEngine();
+  const observer = astronomyObserver();
+  if (Astronomy?.Horizon && observer) {
+    try {
+      const horizontal = Astronomy.Horizon(date, observer, raHours, decDeg, "normal");
+      return {
+        az: normDeg(horizontal.azimuth),
+        alt: horizontal.altitude
+      };
+    } catch (error) {
+      state.status = "Astronomy fallback";
+    }
+  }
+
   const jd = julianDate(date);
   const lst = normHours(gmstHours(jd) + state.lon / 15);
   const hourAngle = signedDeg((lst - raHours) * 15) * DEG;
@@ -357,7 +416,46 @@ function angularSeparation(aRa, aDec, bRa, bDec) {
   return Math.acos(clamp(cosD, -1, 1)) * RAD;
 }
 
-function makeSolarBodies(jd) {
+function makeAstronomySolarBodies(date) {
+  const Astronomy = astronomyEngine();
+  const observer = astronomyObserver();
+  if (!Astronomy?.Equator || !Astronomy?.Horizon || !observer) return null;
+
+  try {
+    return SOLAR_SYSTEM_BODIES.map((meta) => {
+      const equator = Astronomy.Equator(astronomyBody(meta.id), date, observer, true, true);
+      const horizon = Astronomy.Horizon(date, observer, equator.ra, equator.dec, "normal");
+      let mag = meta.mag;
+      let phase = meta.id === "moon" ? 0.5 : undefined;
+
+      if (Astronomy.Illumination) {
+        try {
+          const light = Astronomy.Illumination(astronomyBody(meta.id), date);
+          if (Number.isFinite(light?.mag)) mag = light.mag;
+          if (meta.id === "moon" && Number.isFinite(light?.phase_fraction)) phase = light.phase_fraction;
+        } catch (error) {
+          // Illumination is visual metadata; keep the ephemeris result.
+        }
+      }
+
+      return {
+        ...meta,
+        key: meta.id,
+        ra: equator.ra,
+        dec: equator.dec,
+        az: normDeg(horizon.azimuth),
+        alt: horizon.altitude,
+        mag,
+        phase
+      };
+    });
+  } catch (error) {
+    state.status = "Astronomy fallback";
+    return null;
+  }
+}
+
+function makeFallbackSolarBodies(jd) {
   const sun = sunPosition(jd);
   const moon = moonPosition(jd);
   const elongation = angularSeparation(moon.ra, moon.dec, sun.ra, sun.dec);
@@ -384,6 +482,9 @@ function makeSolarBodies(jd) {
 }
 
 function withHorizontal(body, type) {
+  if (Number.isFinite(body.az) && Number.isFinite(body.alt)) {
+    return { ...body, key: body.key || body.id, type: body.type || type };
+  }
   const horizontal = horizontalFromEquatorial(body.ra, body.dec, state.time);
   return { ...body, ...horizontal, key: body.key || body.id, type: body.type || type };
 }
@@ -394,7 +495,9 @@ function composeBodies() {
   const messier = state.showMessier
     ? MESSIER.map((object) => withHorizontal({ ...object, key: object.id, color: "#d7e548" }, object.type))
     : [];
-  const solar = makeSolarBodies(jd).map((body) => withHorizontal(body, body.type));
+  const astronomySolar = makeAstronomySolarBodies(state.time);
+  state.usingAstronomyEngine = Boolean(astronomySolar);
+  const solar = (astronomySolar || makeFallbackSolarBodies(jd)).map((body) => withHorizontal(body, body.type));
   state.lastBodies = [...solar, ...stars, ...messier];
   return { stars, messier, solar };
 }
@@ -764,6 +867,8 @@ function updateTelemetry() {
   els.statusChip.textContent = state.status;
   document.body.classList.toggle("camera-active", state.cameraActive && state.mode === "ar");
   document.body.classList.toggle("sensor-active", state.sensorsActive);
+  document.body.classList.toggle("astronomy-engine", Boolean(astronomyEngine()?.Equator));
+  document.body.classList.toggle("astronomy-active", state.usingAstronomyEngine);
 }
 
 function updateObjectCard(body) {
@@ -801,13 +906,7 @@ function formatDate(date, short = false) {
 }
 
 function searchItems() {
-  const solar = [
-    { key: "sun", name: "Soleil", type: "Étoile" },
-    { key: "moon", name: "Lune", type: "Satellite" },
-    ...Object.entries(PLANET_ELEMENTS)
-      .filter(([key]) => key !== "earth")
-      .map(([key, planet]) => ({ key, name: planet.name, type: "Planète" }))
-  ];
+  const solar = SOLAR_SYSTEM_BODIES.map((body) => ({ key: body.id, name: body.name, type: body.type }));
   const stars = STARS.map((star) => ({ key: star.id, name: star.name, type: star.constellation || "Étoile" }));
   const messier = MESSIER.map((object) => ({ key: object.id, name: `${object.name} ${object.title}`, type: object.type }));
   return [...solar, ...stars, ...messier];
@@ -815,6 +914,7 @@ function searchItems() {
 
 function updateSearch() {
   const query = els.search.value.trim().toLocaleLowerCase("fr");
+  els.catalogPanel?.classList.toggle("has-query", query.length > 0);
   const items = searchItems()
     .filter((item) => !query || item.name.toLocaleLowerCase("fr").includes(query) || item.type.toLocaleLowerCase("fr").includes(query))
     .slice(0, 9);
@@ -832,6 +932,8 @@ function selectObject(key) {
   state.selectedId = key;
   state.followId = key;
   state.status = "Cible verrouillée";
+  els.catalogPanel?.classList.remove("is-searching", "has-query");
+  els.search.blur();
   const body = state.lastBodies.find((item) => item.key === key || item.id === key);
   if (body) {
     state.centerAz = body.az;
@@ -848,6 +950,7 @@ function setMode(mode) {
     button.setAttribute("aria-pressed", String(active));
   });
   if (mode === "ar" && !state.cameraActive) startCamera();
+  if (mode === "ar" && !state.sensorsActive) enableSensors();
   if (mode === "sensor" && !state.sensorsActive) enableSensors();
 }
 
@@ -861,6 +964,7 @@ async function requestLocation() {
     (position) => {
       state.lat = position.coords.latitude;
       state.lon = position.coords.longitude;
+      state.elevation = Number.isFinite(position.coords.altitude) ? position.coords.altitude : 0;
       state.placeLabel = `${state.lat.toFixed(3)}°, ${state.lon.toFixed(3)}°`;
       state.status = "Position synchronisée";
     },
@@ -876,6 +980,10 @@ async function enableSensors() {
     state.status = "Capteurs indisponibles";
     return;
   }
+  if (state.sensorsActive) {
+    calibrateSensors();
+    return;
+  }
   try {
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
       const response = await DeviceOrientationEvent.requestPermission();
@@ -884,6 +992,7 @@ async function enableSensors() {
         return;
       }
     }
+    window.addEventListener("deviceorientationabsolute", onDeviceOrientation, true);
     window.addEventListener("deviceorientation", onDeviceOrientation, true);
     state.sensorsActive = true;
     state.status = "Capteurs synchronisés";
@@ -892,19 +1001,84 @@ async function enableSensors() {
   }
 }
 
+function quaternionMultiply(a, b) {
+  return {
+    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z
+  };
+}
+
+function quaternionFromEulerYXZ(x, y, z) {
+  const c1 = Math.cos(x / 2);
+  const c2 = Math.cos(y / 2);
+  const c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2);
+  const s2 = Math.sin(y / 2);
+  const s3 = Math.sin(z / 2);
+  return {
+    x: s1 * c2 * c3 + c1 * s2 * s3,
+    y: c1 * s2 * c3 - s1 * c2 * s3,
+    z: c1 * c2 * s3 - s1 * s2 * c3,
+    w: c1 * c2 * c3 + s1 * s2 * s3
+  };
+}
+
+function quaternionFromAxisAngle(axis, angle) {
+  const half = angle / 2;
+  const s = Math.sin(half);
+  return { x: axis[0] * s, y: axis[1] * s, z: axis[2] * s, w: Math.cos(half) };
+}
+
+function rotateVector(q, vector) {
+  const u = [q.x, q.y, q.z];
+  const s = q.w;
+  const uv = [
+    u[1] * vector[2] - u[2] * vector[1],
+    u[2] * vector[0] - u[0] * vector[2],
+    u[0] * vector[1] - u[1] * vector[0]
+  ];
+  const uuv = [
+    u[1] * uv[2] - u[2] * uv[1],
+    u[2] * uv[0] - u[0] * uv[2],
+    u[0] * uv[1] - u[1] * uv[0]
+  ];
+  return [
+    vector[0] + 2 * (s * uv[0] + uuv[0]),
+    vector[1] + 2 * (s * uv[1] + uuv[1]),
+    vector[2] + 2 * (s * uv[2] + uuv[2])
+  ];
+}
+
+function deviceOrientationToHorizon(event) {
+  if (![event.alpha, event.beta, event.gamma].every(Number.isFinite)) return null;
+  const screenAngle = (screen.orientation?.angle || window.orientation || 0) * DEG;
+  let q = quaternionFromEulerYXZ(event.beta * DEG, event.alpha * DEG, -event.gamma * DEG);
+  q = quaternionMultiply(q, quaternionFromAxisAngle([1, 0, 0], -Math.PI / 2));
+  q = quaternionMultiply(q, quaternionFromAxisAngle([0, 0, 1], -screenAngle));
+
+  const forward = rotateVector(q, [0, 0, -1]);
+  const alt = Math.asin(clamp(forward[1], -1, 1)) * RAD;
+  const az = normDeg(Math.atan2(forward[0], -forward[2]) * RAD);
+  return { az, alt: clamp(alt, -88, 88) };
+}
+
+function calibrateSensors() {
+  state.sensorOffset = signedDeg(state.centerAz - state.rawSensorAz);
+  state.status = "Capteurs recalés";
+}
+
 function onDeviceOrientation(event) {
-  const rawHeading = typeof event.webkitCompassHeading === "number"
-    ? event.webkitCompassHeading
-    : typeof event.alpha === "number"
-      ? 360 - event.alpha
-      : state.sensorAz;
-  const beta = typeof event.beta === "number" ? event.beta : 45;
-  const gamma = typeof event.gamma === "number" ? event.gamma : 0;
-  const screenAngle = screen.orientation?.angle || window.orientation || 0;
-  const heading = normDeg(rawHeading + screenAngle + gamma * 0.12);
-  const altitude = clamp(90 - Math.abs(beta), -35, 88);
-  state.sensorAz = lerpAngle(state.sensorAz, heading, 0.22);
-  state.sensorAlt += (altitude - state.sensorAlt) * 0.22;
+  const reading = deviceOrientationToHorizon(event);
+  if (!reading) return;
+  state.rawSensorAz = reading.az;
+  state.rawSensorAlt = reading.alt;
+  state.hasSensorReading = true;
+
+  const heading = normDeg(reading.az + state.sensorOffset);
+  state.sensorAz = lerpAngle(state.sensorAz, heading, 0.18);
+  state.sensorAlt += (reading.alt - state.sensorAlt) * 0.18;
 }
 
 async function startCamera() {
@@ -980,7 +1154,17 @@ function wireEvents() {
     els.messierBtn.classList.toggle("is-active", state.showMessier);
     els.messierBtn.setAttribute("aria-pressed", String(state.showMessier));
   });
+  els.search.addEventListener("focus", () => els.catalogPanel?.classList.add("is-searching"));
+  els.search.addEventListener("blur", () => {
+    if (!els.search.value.trim()) els.catalogPanel?.classList.remove("is-searching", "has-query");
+  });
   els.search.addEventListener("input", updateSearch);
+  els.search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      els.search.blur();
+      els.catalogPanel?.classList.remove("is-searching", "has-query");
+    }
+  });
   els.results.addEventListener("click", (event) => {
     const button = event.target.closest("[data-key]");
     if (button) selectObject(button.dataset.key);
