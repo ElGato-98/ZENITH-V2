@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#020204" />
+    <title>Zénith</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell" aria-label="Zénith sky map">
+      <video id="cameraFeed" class="camera-feed" autoplay playsinline muted></video>
+      <canvas id="skyCanvas" class="sky-canvas"></canvas>
+      <div class="scanlines" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-eye" aria-hidden="true"></span>
+          <div class="brand-copy">
+            <h1>Zénith</h1>
+            <span id="statusChip">Carte gnomonique</span>
+          </div>
+        </div>
+
+        <nav class="mode-switch" aria-label="Mode d'affichage">
+          <button class="mode-button is-active" type="button" data-mode="map" aria-pressed="true">
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7.5 9 5l6 2.5L20 5v11.5l-5 2.5-6-2.5-5 2.5z" /><path d="M9 5v11.5M15 7.5V19" /></svg>
+            </span>
+            <span>Carte</span>
+          </button>
+          <button class="mode-button" type="button" data-mode="sensor" aria-pressed="false">
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><circle cx="12" cy="12" r="4" /><path d="m14.2 9.8-4.4 4.4" /></svg>
+            </span>
+            <span>Gyro</span>
+          </button>
+          <button class="mode-button" type="button" data-mode="ar" aria-pressed="false">
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" /><circle cx="12" cy="12" r="3" /></svg>
+            </span>
+            <span>AR</span>
+          </button>
+        </nav>
+      </header>
+
+      <aside class="catalog-panel" aria-label="Catalogue céleste">
+        <label class="search-box" for="searchInput">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Chercher un astre" />
+        </label>
+        <div id="searchResults" class="search-results" role="listbox"></div>
+        <article id="objectCard" class="object-card" aria-live="polite"></article>
+      </aside>
+
+      <section class="telemetry" aria-label="Mesures">
+        <div>
+          <strong id="azValue">180°</strong>
+          <span>Azimut</span>
+        </div>
+        <div>
+          <strong id="altValue">45°</strong>
+          <span>Hauteur</span>
+        </div>
+        <div>
+          <strong id="fovValue">82°</strong>
+          <span>Champ</span>
+        </div>
+      </section>
+
+      <div class="time-strip" aria-label="Temps">
+        <button id="backHourBtn" class="icon-button" type="button" title="Reculer d'une heure" aria-label="Reculer d'une heure">
+          <svg viewBox="0 0 24 24"><path d="M11 19 4 12l7-7" /><path d="M20 19 13 12l7-7" /></svg>
+        </button>
+        <button id="liveTimeBtn" class="text-button is-active" type="button">Temps réel</button>
+        <button id="nextHourBtn" class="icon-button" type="button" title="Avancer d'une heure" aria-label="Avancer d'une heure">
+          <svg viewBox="0 0 24 24"><path d="m13 5 7 7-7 7" /><path d="m4 5 7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      <footer class="control-dock" aria-label="Contrôles">
+        <button id="locationBtn" class="dock-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-12A7 7 0 1 0 5 9c0 5.8 7 12 7 12Z" /><circle cx="12" cy="9" r="2.5" /></svg>
+          <span>Position</span>
+        </button>
+        <button id="sensorBtn" class="dock-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /><path d="M6.3 6.3 9 9M15 15l2.7 2.7M17.7 6.3 15 9M9 15l-2.7 2.7" /><circle cx="12" cy="12" r="3" /></svg>
+          <span>Capteurs</span>
+        </button>
+        <button id="cameraBtn" class="dock-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" /><circle cx="12" cy="13" r="4" /></svg>
+          <span>Caméra</span>
+        </button>
+        <button id="labelsBtn" class="dock-button is-active" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h8" /></svg>
+          <span>Noms</span>
+        </button>
+        <button id="messierBtn" class="dock-button is-active" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="6" /></svg>
+          <span>Messier</span>
+        </button>
+      </footer>
+    </main>
+  </body>
+</html>

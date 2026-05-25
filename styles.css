@@ -1,0 +1,564 @@
+:root {
+  color-scheme: dark;
+  --void: #020204;
+  --panel: rgba(8, 9, 13, 0.72);
+  --panel-solid: #08090d;
+  --line: rgba(255, 255, 255, 0.16);
+  --text: #f7f7fb;
+  --muted: rgba(247, 247, 251, 0.64);
+  --cyan: #37d8ff;
+  --green: #62ff6e;
+  --pink: #ff4fad;
+  --orange: #ff9a3d;
+  --lemon: #d7e548;
+  --blue: #6d8cff;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.44);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-shell {
+  position: relative;
+  width: 100vw;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(255, 79, 173, 0.05), transparent 24%, rgba(55, 216, 255, 0.04) 58%, transparent),
+    #020204;
+  isolation: isolate;
+}
+
+.camera-feed,
+.sky-canvas,
+.scanlines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-feed {
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  background: #000;
+}
+
+body.camera-active .camera-feed {
+  opacity: 1;
+}
+
+.sky-canvas {
+  z-index: 2;
+  touch-action: none;
+}
+
+.scanlines {
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: screen;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06) 0,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+.topbar,
+.catalog-panel,
+.telemetry,
+.control-dock,
+.time-strip {
+  position: absolute;
+  z-index: 4;
+}
+
+.topbar {
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.brand,
+.mode-switch,
+.catalog-panel,
+.telemetry,
+.control-dock,
+.time-strip {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.brand-eye {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #020204 0 24%, transparent 25%),
+    linear-gradient(95deg, #fff 0 42%, #c7dcff 50%, #ff4fad 75%, #d7e548 100%);
+  clip-path: polygon(0 50%, 24% 6%, 50% 0, 76% 6%, 100% 50%, 76% 94%, 50% 100%, 24% 94%);
+}
+
+.brand-eye::after {
+  position: absolute;
+  top: 9px;
+  right: -16px;
+  width: 28px;
+  height: 5px;
+  content: "";
+  background: linear-gradient(90deg, var(--blue), var(--pink), #fff);
+  filter: blur(1px);
+  transform: skewX(-18deg);
+}
+
+.brand-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+#statusChip {
+  max-width: 34vw;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  pointer-events: auto;
+}
+
+.mode-button,
+.dock-button,
+.icon-button,
+.text-button {
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-button {
+  display: flex;
+  min-width: 82px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.mode-button.is-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.button-icon {
+  display: inline-flex;
+}
+
+.catalog-panel {
+  top: 92px;
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  width: min(330px, calc(100vw - 28px));
+  max-height: calc(100svh - 188px);
+  grid-template-rows: auto minmax(0, auto) auto;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.search-box {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+}
+
+.search-box input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.search-box input::placeholder {
+  color: rgba(247, 247, 251, 0.48);
+}
+
+.search-results {
+  display: grid;
+  max-height: 212px;
+  gap: 6px;
+  overflow: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.result-button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  text-align: left;
+}
+
+.result-button:hover,
+.result-button:focus-visible {
+  border-color: rgba(55, 216, 255, 0.45);
+  outline: 0;
+}
+
+.result-button small {
+  color: var(--muted);
+}
+
+.object-card {
+  display: grid;
+  gap: 10px;
+  min-height: 134px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.object-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.object-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.object-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.object-card dt {
+  color: rgba(247, 247, 251, 0.48);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.object-card dd {
+  margin: 1px 0 0;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.telemetry {
+  left: max(14px, env(safe-area-inset-left));
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(62px, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.telemetry div {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.telemetry strong {
+  color: #fff;
+  font-size: 0.97rem;
+  line-height: 1.1;
+}
+
+.telemetry span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.time-strip {
+  left: 50%;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  transform: translateX(-50%);
+}
+
+.icon-button,
+.text-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.icon-button {
+  width: 36px;
+}
+
+.text-button {
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.text-button.is-active {
+  background: rgba(215, 229, 72, 0.13);
+  color: #f7ffd0;
+}
+
+.control-dock {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 760px;
+  padding: 5px;
+  border-radius: 8px;
+  margin: 0 auto;
+}
+
+.dock-button {
+  display: grid;
+  min-width: 0;
+  min-height: 48px;
+  place-items: center;
+  gap: 2px;
+  padding: 6px 5px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.dock-button svg {
+  width: 1.18rem;
+  height: 1.18rem;
+}
+
+.dock-button span {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-button.is-active,
+.dock-button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+.dock-button:focus-visible,
+.mode-button:focus-visible,
+.icon-button:focus-visible,
+.text-button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+body.sensor-active #sensorBtn,
+body.camera-active #cameraBtn {
+  color: var(--green);
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .mode-switch {
+    width: min(286px, 100%);
+  }
+
+  .mode-button {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  .catalog-panel {
+    top: auto;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(151px + env(safe-area-inset-bottom));
+    left: max(14px, env(safe-area-inset-left));
+    width: auto;
+    max-height: 28svh;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .object-card {
+    display: none;
+  }
+
+  .telemetry {
+    right: auto;
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 28px);
+  }
+
+  .time-strip {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    left: auto;
+    transform: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .brand {
+    max-width: 44vw;
+    padding-inline: 9px;
+  }
+
+  .brand-eye {
+    width: 31px;
+    height: 18px;
+  }
+
+  .brand h1 {
+    font-size: 0.98rem;
+  }
+
+  #statusChip {
+    max-width: 24vw;
+  }
+
+  .mode-button {
+    height: 36px;
+    gap: 4px;
+    font-size: 0.78rem;
+  }
+
+  .button-icon svg {
+    width: 0.98rem;
+    height: 0.98rem;
+  }
+
+  .catalog-panel {
+    bottom: calc(145px + env(safe-area-inset-bottom));
+  }
+
+  .time-strip {
+    display: none;
+  }
+
+  .telemetry {
+    grid-template-columns: repeat(3, minmax(54px, 1fr));
+  }
+
+  .telemetry div {
+    padding: 7px 9px;
+  }
+
+  .control-dock {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
